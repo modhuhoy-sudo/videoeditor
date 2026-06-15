@@ -6,45 +6,66 @@ fetch('videos.json')
     container.innerHTML = ''; // clear container
 
     let currentPlayer = null; // এইটা রাখবে চলমান ভিডিও
+    let activePlayer = null;
 
-    videos.forEach(video => {
-      let videoId = '';
+   videos.forEach(video => {
+  let videoId = '';
+  let embedLink = '';
 
-      // YouTube link থেকে videoId বের করা
-      if(video.videoLink.includes('youtu.be/')) {
-        videoId = video.videoLink.split('youtu.be/')[1].split('?')[0];
-      } else if(video.videoLink.includes('youtube.com/watch?v=')) {
-        videoId = video.videoLink.split('v=')[1].split('&')[0];
-      }
+// YouTube short link
+if(video.videoLink.includes('youtu.be/')) {
+    videoId = video.videoLink.split('youtu.be/')[1].split('?')[0];
+    embedLink = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+}
 
-      const embedLink = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`; // enable JS API
-      const videoDiv = document.createElement('div');
-      videoDiv.classList.add('video');
+// YouTube normal link
+else if(video.videoLink.includes('youtube.com/watch?v=')) {
+    videoId = video.videoLink.split('v=')[1].split('&')[0];
+    embedLink = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+}
 
-      videoDiv.innerHTML = `
-        <iframe id="video-${videoId}" src="${embedLink}" 
-          title="${video.title}" frameborder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen>
-        </iframe>
+// Vimeo link
+else if(video.videoLink.includes('vimeo.com/')) {
+    videoId = video.videoLink.split('vimeo.com/')[1].split('?')[0];
+    embedLink = `https://player.vimeo.com/video/${videoId}`;
+}
 
-        <h3>${video.title}</h3>
-        <p>${video.description}</p>
+// Skip invalid links
+else {
+    return;
+}
 
-        <div class="video-stats">
-          <span>⭐ ${video.rating } Rating</span>
-          <span class="views"><i class="fas fa-eye"></i> ${video.views } Views</span>
-        </div>
+const videoDiv = document.createElement('div');
+videoDiv.classList.add('video');
 
-        <div class="rating">
-          <span data-value="1">&#9733;</span>
-          <span data-value="2">&#9733;</span>
-          <span data-value="3">&#9733;</span>
-          <span data-value="4">&#9733;</span>
-          <span data-value="5">&#9733;</span>
-        </div>
-      `;
+videoDiv.innerHTML = `
+    <iframe
+        id="video-${videoId}"
+        src="${embedLink}"
+        title="${video.title}"
+        frameborder="0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowfullscreen>
+    </iframe>
 
-      container.appendChild(videoDiv);
+    <h3>${video.title}</h3>
+    <p>${video.description}</p>
+
+    <div class="video-stats">
+        <span>⭐ ${video.rating} Rating</span>
+        <span class="views"><i class="fas fa-eye"></i> ${video.views} Views</span>
+    </div>
+
+    <div class="rating">
+        <span data-value="1">&#9733;</span>
+        <span data-value="2">&#9733;</span>
+        <span data-value="3">&#9733;</span>
+        <span data-value="4">&#9733;</span>
+        <span data-value="5">&#9733;</span>
+    </div>
+`;
+
+container.appendChild(videoDiv);
 
       // --- Star rating logic ---
       const stars = videoDiv.querySelectorAll('.rating span');
@@ -86,13 +107,42 @@ fetch('videos.json')
         const player = new YT.Player(iframe.id, {
           events: {
             'onStateChange': (event) => {
-              if(event.data === YT.PlayerState.PLAYING) {
-                // আগের চলমান ভিডিও pause করা
-                if(currentPlayer && currentPlayer !== player) {
-                  currentPlayer.pauseVideo();
-                }
-                currentPlayer = player;
-              }
+            if(event.data === YT.PlayerState.PLAYING) {
+
+  if(activePlayer && activePlayer !== player){
+
+    if(activePlayer.pauseVideo){
+      activePlayer.pauseVideo();
+    }
+
+    if(activePlayer.pause){
+      activePlayer.pause();
+    }
+
+  }
+
+  activePlayer = player;
+  currentPlayer = player;
+}
+
+document.querySelectorAll('iframe[src*="vimeo.com"]').forEach((iframe) => {
+
+    const player = new Vimeo.Player(iframe);
+
+    player.on('play', () => {
+
+        document.querySelectorAll('iframe[src*="vimeo.com"]').forEach((otherIframe) => {
+
+            if (otherIframe !== iframe) {
+                const otherPlayer = new Vimeo.Player(otherIframe);
+                otherPlayer.pause();
+            }
+
+        });
+
+    });
+
+});
               // stop হলে currentPlayer reset
               if(event.data === YT.PlayerState.ENDED || event.data === YT.PlayerState.PAUSED) {
                 if(currentPlayer === player) currentPlayer = null;
@@ -191,3 +241,4 @@ youtubeIframes.forEach(iframe => {
         cursorRing.style.opacity = '1';
     });
 });
+
