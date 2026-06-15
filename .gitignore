@@ -9,3 +9,10 @@ AppData/
 
 # Ignore node_modules (if you have any)
 node_modules/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
